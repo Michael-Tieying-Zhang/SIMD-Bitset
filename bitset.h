@@ -13,7 +13,7 @@ class Bitset {
   // Bitset is using char* to store data
   Bitset(int size) : num_bits_(size) {
     // The total memory is larger than # of bits
-    num_bytes_ = num_bits_ / CHAR_SIZE + 1;
+    num_bytes_ = (num_bits_ / CHAR_SIZE) + 1;
 
     // bits must be aligned. For 128-bit SIMD, it is 16
     bits_ = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
@@ -25,6 +25,10 @@ class Bitset {
   // Support null bitset.
   Bitset() : num_bits_(0), num_bytes_(0), bits_(nullptr) {}
 
+  // Support a given char*, but must specify the size
+  Bitset(char* bits, int num_bit, int num_byte)
+      : bits_(bits), num_bits_(num_bit), num_bytes_(num_byte) {}
+
   ~Bitset() {
     if (bits_ != nullptr) {
       free(bits_);
@@ -34,7 +38,7 @@ class Bitset {
   // Use resize to allocate bitset
   void Resize(int size) : num_bits_(size) {
     // The total memory is larger than # of bits
-    num_bytes_ = num_bits_ / CHAR_SIZE + 1;
+    num_bytes_ = (num_bits_ / CHAR_SIZE) + 1;
 
     // bits must be aligned. For 128-bit SIMD, it is 16
     bits_ = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
@@ -79,7 +83,7 @@ class Bitset {
   // (bitset). The passing by bitset should have the same size, and the caller
   // should guarantee this.
   // Note: this new bitset is using new, the caller should delete it later.
-  char* AND(Bitset& rh_bitset) {
+  Bitset AND(Bitset& rh_bitset) {
     // The SIMD vector
     __m128 A, B, C;
 
@@ -101,10 +105,11 @@ class Bitset {
       _mm_store_ps((float*)&result[i], C);
     }
 
-    return result;
+    // FIXME: Here return the instance leads to high cost?
+    return Bitset(result, num_bits_, num_bytes_);
   }
 
-  char* OR(Bitset& rh_bitset) {
+  Bitset OR(Bitset& rh_bitset) {
     // The SIMD vector
     __m128 A, B, C;
 
@@ -124,7 +129,8 @@ class Bitset {
       _mm_store_ps((float*)&result[i], C);
     }
 
-    return result;
+    // FIXME: Here return the instance leads to high cost?
+    return Bitset(result, num_bits_, num_bytes_);
   }
 
   // Return the number of bits (which are equal to 1)
@@ -173,6 +179,7 @@ class Bitset {
   }
 
   char* Get() { return bits_; }
+  int Size() { return num_bits_; }
 
  private:
   inline int popcnt128(__m128i n) {
