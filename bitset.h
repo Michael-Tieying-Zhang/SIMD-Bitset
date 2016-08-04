@@ -1,12 +1,19 @@
+#include <iostream>
+#include <string.h>
+#include <stdlib.h>
+#include <vector>
+#include <x86intrin.h>
+
 #define SIMD_SIZE 128
 #define ALIGNED_SIZE 16
+#define CHAR_SIZE 8
 
 class Bitset {
  public:
   // Bitset is using char* to store data
   Bitset(int size) : num_bits_(size) {
     // The total memory is larger than # of bits
-    num_bytes_ = num_bits_ / sizeof(char) + 1;
+    num_bytes_ = num_bits_ / CHAR_SIZE + 1;
 
     // bits must be aligned. For 128-bit SIMD, it is 16
     bits_ = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
@@ -24,31 +31,31 @@ class Bitset {
   // For exampel, bits are (7, 10, 13, 45, 100)
   // and bitset are (000000000000000). This func set bitset with
   // (00000100100100001)
-  void BitSet(std::vector<int>& bits) {
+  void Set(std::vector<int>& bits) {
     // Iterate the input region
     for (auto& bit : bits) {
-      int idx = bit / sizeof(char);
-      int offbit = bit % sizeof(char);
+      int idx = bit / CHAR_SIZE;
+      int offbit = bit % CHAR_SIZE;
 
       char offset = 0x01;
       offset = offset << offbit;
 
-      std::cout << "idx: " << idx << " bit: " << bit
-                << " offset: " << (unsigned short)offset << std::endl;
+      std::cout << "bit--" << bit << ":: idx--" << idx << " offbit--" << offbit
+                << " offset--" << (unsigned short)offset << std::endl;
 
       bits_[idx] |= offset;
     }
   }
 
-  void BitSet(int bit) {
-    int idx = bit / sizeof(char);
-    int offbit = bit % sizeof(char);
+  void Set(int bit) {
+    int idx = bit / CHAR_SIZE;
+    int offbit = bit % CHAR_SIZE;
 
     char offset = 0x01;
     offset = offset << offbit;
 
-    std::cout << "idx: " << idx << " bit: " << bit
-              << " offset: " << (unsigned short)offset << std::endl;
+    std::cout << "bit--" << bit << ":: idx--" << idx << " offbit--" << offbit
+              << " offset--" << (unsigned short)offset << std::endl;
 
     bits_[idx] |= offset;
   }
@@ -70,7 +77,7 @@ class Bitset {
     // How many chars a SIMD vector contains
     // For example, 128-bit SIMD, and char is 8, so it processes 16 bytes each
     // time (span = 16)
-    int span = SIMD_SIZE / sizeof(char);
+    int span = SIMD_SIZE / CHAR_SIZE;
 
     for (int i = 0; i < num_bytes_; i += span) {
       A = _mm_load_ps((float*)&bits_[i]);
@@ -93,7 +100,7 @@ class Bitset {
     char* result = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
 
     // How many chars a SIMD vector contains
-    int span = SIMD_SIZE / sizeof(char);
+    int span = SIMD_SIZE / CHAR_SIZE;
 
     for (int i = 0; i < num_bytes_; i += span) {
       A = _mm_load_ps((float*)&bits_[i]);
@@ -114,7 +121,7 @@ class Bitset {
     __m128 A;
 
     // How many chars a SIMD vector contains
-    int span = SIMD_SIZE / sizeof(char);
+    int span = SIMD_SIZE / CHAR_SIZE;
 
     for (int i = 0; i < num_bytes_; i += span) {
       A = _mm_load_ps((float*)&bits_[i]);
@@ -138,7 +145,7 @@ class Bitset {
     // How many chars a SIMD vector contains
     // For example, 128-bit SIMD, and char is 8, so it processes 16 bytes each
     // time (span = 16)
-    int span = SIMD_SIZE / sizeof(char);
+    int span = SIMD_SIZE / CHAR_SIZE;
 
     for (int i = 0; i < num_bytes_; i += span) {
       A = _mm_load_ps((float*)&bits_[i]);
@@ -171,6 +178,6 @@ class Bitset {
   int num_bits_;
 
   // number of bytes of this bitset
-  // size_ = num_bits_/sizeof(char) + 1;
+  // size_ = num_bits_/CHAR_SIZE + 1;
   int num_bytes_;
 };
