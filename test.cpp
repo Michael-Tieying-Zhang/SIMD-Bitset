@@ -1,5 +1,7 @@
 #include "bitset.h"
 
+/*g++ -std=c++0x test.cpp*/
+
 int main() {
   // Create a bitset with 100 bits
   Bitset bitset1(100);

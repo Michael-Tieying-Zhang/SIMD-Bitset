@@ -22,10 +22,25 @@ class Bitset {
     memset(bits_, 0, num_bytes_);
   }
 
+  // Support null bitset.
+  Bitset() : num_bits_(0), num_bytes_(0), bits_(nullptr) {}
+
   ~Bitset() {
     if (bits_ != nullptr) {
       free(bits_);
     }
+  }
+
+  // Use resize to allocate bitset
+  void Resize(int size) : num_bits_(size) {
+    // The total memory is larger than # of bits
+    num_bytes_ = num_bits_ / CHAR_SIZE + 1;
+
+    // bits must be aligned. For 128-bit SIMD, it is 16
+    bits_ = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
+
+    // Init the memory with zero
+    memset(bits_, 0, num_bytes_);
   }
 
   // For exampel, bits are (7, 10, 13, 45, 100)
