@@ -29,5 +29,37 @@ int main() {
   std::cout << "count1: " << count1 << "; count2: " << count2 << std::endl;
   std::cout << "and_count: " << and_count << std::endl;
 
+  // Create a bitset with 100 bits
+  Bitset bitset3;
+  Bitset bitset4;
+
+  // Set bitset3
+  std::vector<int> wid3;
+  wid3.push_back(2);
+  wid3.push_back(2);
+  wid3.push_back(2);
+  wid3.push_back(2);
+  wid3.push_back(2);
+  wid3.push_back(2);
+  wid3.push_back(2);
+
+  bitset3.Resize(3);
+  bitset3.Set(wid3);
+
+  // Set bitset
+  std::vector<int> wid4;
+  wid4.push_back(2);
+
+  bitset4.Resize(3);
+  bitset4.Set(wid4);
+
+  count1 = bitset3.Count();
+  count2 = bitset4.Count();
+
+  and_count = bitset3.CountAnd(bitset4);
+
+  std::cout << "count3: " << count1 << "; count4: " << count2 << std::endl;
+  std::cout << "and_count34: " << and_count << std::endl;
+
   return 0;
 }
