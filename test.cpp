@@ -21,6 +21,8 @@ int main() {
   bitset2.Set(64);
   bitset2.Set(87);
 
+  // bitset1.Count(63);
+
   int count1 = bitset1.Count();
   int count2 = bitset2.Count();
 

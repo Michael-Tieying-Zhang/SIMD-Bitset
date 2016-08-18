@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <x86intrin.h>
 
-#define SIMD_SIZE 128
+#define SIMD_SIZE 256
 #define ALIGNED_SIZE \
   (SIMD_SIZE / CHAR_SIZE)  // For 128-bit SIMD, ALIGNED_SIZE is 16 bytes
 #define CHAR_SIZE 8
@@ -76,13 +76,14 @@ class Bitset {
       char offset = 0x01;
       offset = offset << offbit;
 
-      std::cout << "bit--" << bit << ":: idx--" << idx << " offbit--" << offbit
-                << " offset--" << (unsigned short)offset << " char*--"
-                << (unsigned short)*bits_;
+      //      std::cout << "bit--" << bit << ":: idx--" << idx << " offbit--" <<
+      // offbit
+      //                << " offset--" << (unsigned short)offset << " char*--"
+      //                << (unsigned short)*bits_;
 
       bits_[idx] |= offset;
 
-      std::cout << "--" << (unsigned short)*bits_ << std::endl;
+      // std::cout << "--" << (unsigned short)*bits_ << std::endl;
     }
   }
 
@@ -103,10 +104,123 @@ class Bitset {
     bits_[idx] |= offset;
   }
 
+  // Set all bits with 0
+  void Clear() { memset(bits_, 0, num_bytes_); }
+
   // TODO: Return Bitset where its value to value copying. But for char* it only
   // copies address, not deep copy. So in destructor, we do not free it. We
   // should fix this in the future
+  // Note: If use this API pls change SIMD_SIZE to 128
   Bitset AND(Bitset& rh_bitset) {
+    // The SIMD vector
+    __m256i A, B, C;
+
+    // The char* of right hand bitset
+    char* rbits = rh_bitset.Get();
+
+    // The return char*
+    char* result = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
+
+    // How many chars a SIMD vector contains
+    // For example, 256-bit SIMD, and char is 8, so it processes 16 bytes each
+    // time (span = 32)
+    int span = SIMD_SIZE / CHAR_SIZE;
+
+    for (int i = 0; i < num_bytes_; i += span) {
+      A = _mm256_load_si256((__m256i*)&bits_[i]);
+      B = _mm256_load_si256((__m256i*)&rbits[i]);
+      C = _mm256_and_si256(A, B);
+      _mm256_store_si256((__m256i*)&result[i], C);
+    }
+
+    // TODO: just use default assigner there. should we implement that?
+    return Bitset(result, num_bits_, num_bytes_);
+  }
+
+  // TODO: Return Bitset where its value to value copying. But for char* it only
+  // copies address, not deep copy. So in destructor, we do not free it. We
+  // should fix this in the future
+  // Note: If use this API pls change SIMD_SIZE to 128
+  Bitset OR(Bitset& rh_bitset) {
+    // The SIMD vector
+    __m256i A, B, C;
+
+    // The char* of right hand bitset
+    char* rbits = rh_bitset.Get();
+
+    // The return char*
+    char* result = (char*)aligned_alloc(ALIGNED_SIZE, num_bytes_);
+
+    // How many chars a SIMD vector contains
+    // For example, 256-bit SIMD, and char is 8, so it processes 16 bytes each
+    // time (span = 32)
+    int span = SIMD_SIZE / CHAR_SIZE;
+
+    for (int i = 0; i < num_bytes_; i += span) {
+      A = _mm256_load_si256((__m256i*)&bits_[i]);
+      B = _mm256_load_si256((__m256i*)&rbits[i]);
+      C = _mm256_or_si256(A, B);
+      _mm256_store_si256((__m256i*)&result[i], C);
+    }
+
+    // TODO: just use default assigner there. should we implement that?
+    return Bitset(result, num_bits_, num_bytes_);
+  }
+
+  // Return the number of bits (which are equal to 1)
+  int Count() {
+    // Return count
+    int count = 0;
+
+    int count_test = 0;
+
+    // The SIMD vector
+    __m256i A;
+
+    // How many chars a SIMD vector contains, 256/8=32
+    int span = SIMD_SIZE / CHAR_SIZE;
+
+    for (int i = 0; i < num_bytes_; i += span) {
+      A = _mm256_load_si256((__m256i*)&bits_[i]);
+      count += popcnt256(A);
+    }
+
+    return count;
+  }
+
+  // Return the count for AND operation
+  int CountAnd(Bitset& rh_bitset) {
+    // Return count
+    int count = 0;
+
+    // The SIMD vector
+    __m256i A, B, C;
+
+    // The char* of right hand bitset
+    char* rbits = rh_bitset.Get();
+
+    // How many chars a SIMD vector contains
+    // For example, 128-bit SIMD, and char is 8, so it processes 16 bytes each
+    // time (span = 16)
+    int span = SIMD_SIZE / CHAR_SIZE;
+
+    for (int i = 0; i < num_bytes_; i += span) {
+      A = _mm256_load_si256((__m256i*)&bits_[i]);
+      B = _mm256_load_si256((__m256i*)&rbits[i]);
+      C = _mm256_and_si256(A, B);
+      count += popcnt256(C);
+    }
+
+    return count;
+  }
+
+  char* Get() { return bits_; }
+  int Size() { return num_bits_; }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // SIMD 128 Implementation
+  /////////////////////////////////////////////////////////////////////////////
+  Bitset AND128(Bitset& rh_bitset) {
     // The SIMD vector
     __m128 A, B, C;
 
@@ -132,10 +246,7 @@ class Bitset {
     return Bitset(result, num_bits_, num_bytes_);
   }
 
-  // TODO: Return Bitset where its value to value copying. But for char* it only
-  // copies address, not deep copy. So in destructor, we do not free it. We
-  // should fix this in the future
-  Bitset OR(Bitset& rh_bitset) {
+  Bitset OR128(Bitset& rh_bitset) {
     // The SIMD vector
     __m128 A, B, C;
 
@@ -159,8 +270,7 @@ class Bitset {
     return Bitset(result, num_bits_, num_bytes_);
   }
 
-  // Return the number of bits (which are equal to 1)
-  int Count() {
+  int Count128() {
     // Return count
     int count = 0;
 
@@ -181,7 +291,7 @@ class Bitset {
   }
 
   // Return the count for AND operation
-  int CountAnd(Bitset& rh_bitset) {
+  int CountAnd128(Bitset& rh_bitset) {
     // Return count
     int count = 0;
 
@@ -206,9 +316,6 @@ class Bitset {
     return count;
   }
 
-  char* Get() { return bits_; }
-  int Size() { return num_bits_; }
-
  private:
   inline int popcnt128(__m128i n) {
     const __m128i n_hi = _mm_unpackhi_epi64(n, n);
@@ -218,6 +325,12 @@ class Bitset {
 #else
     return __popcntq(_mm_cvtsi128_si64(n)) + __popcntq(_mm_cvtsi128_si64(n_hi));
 #endif
+  }
+
+  inline int popcnt256(__m256i n) {
+    uint64_t* u = (uint64_t*)&n;
+    return _mm_popcnt_u64(u[0]) + _mm_popcnt_u64(u[1]) + _mm_popcnt_u64(u[2]) +
+           _mm_popcnt_u64(u[3]);
   }
 
  private:
