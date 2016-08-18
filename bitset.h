@@ -327,6 +327,7 @@ class Bitset {
 #endif
   }
 
+  // Support 256
   inline int popcnt256(__m256i n) {
     uint64_t* u = (uint64_t*)&n;
     return _mm_popcnt_u64(u[0]) + _mm_popcnt_u64(u[1]) + _mm_popcnt_u64(u[2]) +
